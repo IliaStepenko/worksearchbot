@@ -27,22 +27,22 @@ def on_start(message):
 
 
         bot.send_message(message.chat.id, "Привет.\nДавай познакомимся?\nЯ - jobsearcher.\n Подскажи мне свое имя.")
-        DBWorker.set_user_state(message.chat.id, State.S_ENTER_NAME.value)
+        db_worker.set_user_state(message.chat.id, State.S_ENTER_NAME.value)
 
     else:
         bot.send_message(message.chat.id,
                          "Привет, "
                          + query_result.name + "\nРад новой встрече. Подскажи город в котором будем искать работу")
-        DBWorker.set_user_state(message.chat.id, State.S_ENTER_CITY.value)
-    db_worker.session_close()
+        db_worker.set_user_state(message.chat.id, State.S_ENTER_CITY.value)
+    #db_worker.session_close()
 
 
 @bot.message_handler(commands=['urefresh'])
 def on_refresh(message):
     db_worker.refresh_user(message.chat.id)
-    db_worker.session_close()
+    #db_worker.session_close()
     bot.send_message(message.chat.id, "Привет.\nДавай познакомимся? Я jobsearcher. Подскажи мне свое имя.")
-    DBWorker.set_user_state(message.chat.id, State.S_ENTER_NAME.value)
+    db_worker.set_user_state(message.chat.id, State.S_ENTER_NAME.value)
 
 
 
@@ -51,14 +51,15 @@ def on_refresh(message):
 def inline_button_handler(query):
 
     if query.data == 'change_request':
+        bot.delete_message(query.message.chat.id, query.message.message_id)
         bot.send_message(query.message.chat.id, "В каком городе нужно искать вакансии?")
-        DBWorker.set_user_state(query.message.chat.id, State.S_ENTER_CITY.value)
+        db_worker.set_user_state(query.message.chat.id, State.S_ENTER_CITY.value)
 
     if query.data.find("pg") != -1:
         selected_page = int(query.data.split('-')[-1])
 
         user = db_worker.get_user_by_id(chat_id=query.message.chat.id)
-        db_worker.session_close()
+        #db_worker.session_close()
 
         work_processor = WorkProcessor(user.city, user.query)
         job_list = work_processor.get_offer_list(page=selected_page)
@@ -93,7 +94,7 @@ def inline_button_handler(query):
                                   reply_markup=keyboard,
                                   disable_web_page_preview=True)
 
-            DBWorker.set_user_state(query.message.chat.id, State.S_ENTER_CITY)
+            db_worker.set_user_state(query.message.chat.id, State.S_ENTER_CITY.value)
 
         else:
             result = 'К сожалению, по Вашему запросу ничего не найдено'
@@ -104,37 +105,37 @@ def inline_button_handler(query):
             bot.send_message(user.telegram_id, result, reply_markup=keyboard, disable_web_page_preview=True)
 
 
-@bot.message_handler(func=lambda message: DBWorker.get_user_state(chat_id=message.chat.id) == State.S_ENTER_NAME.value)
+@bot.message_handler(func=lambda message: db_worker.get_user_state(chat_id=message.chat.id) == State.S_ENTER_NAME.value)
 def get_name(message):
 
     db_worker.update_user(telegram_id=message.chat.id, name=message.text)
     user = db_worker.get_user_by_id(chat_id=message.chat.id)
-    db_worker.session_close()
+    #db_worker.session_close()
 
     bot.send_message(user.telegram_id,
                      "Приятно познакомиться, " + user.name + "\n" + "В каком городе нужно искать вакансии?")
 
-    DBWorker.set_user_state(message.chat.id, State.S_ENTER_CITY.value)
+    db_worker.set_user_state(message.chat.id, State.S_ENTER_CITY.value)
 
 
-@bot.message_handler(func=lambda message: DBWorker.get_user_state(chat_id=message.chat.id) == State.S_ENTER_CITY.value )
+@bot.message_handler(func=lambda message: db_worker.get_user_state(chat_id=message.chat.id) == State.S_ENTER_CITY.value )
 def get_city(message):
 
     db_worker.update_user(telegram_id=message.chat.id, city=message.text)
     user = db_worker.get_user_by_id(chat_id=message.chat.id)
-    db_worker.session_close()
+    #db_worker.session_close()
     bot.send_message(message.chat.id,
                      "Ищем вакансии в городе " + user.city + '\n' + user.name + ", какая работа тебя интересует?"  )
-    DBWorker.set_user_state(message.chat.id, State.S_ENTER_QUERY.value)
+    db_worker.set_user_state(message.chat.id, State.S_ENTER_QUERY.value)
 
 
-@bot.message_handler(func=lambda message: DBWorker.get_user_state(chat_id=message.chat.id) == State.S_ENTER_QUERY.value)
+@bot.message_handler(func=lambda message: db_worker.get_user_state(chat_id=message.chat.id) == State.S_ENTER_QUERY.value)
 def get_query(message):
 
     db_worker.update_user(telegram_id=message.chat.id, query=message.text)
     user = db_worker.get_user_by_id(chat_id=message.chat.id)
     bot.send_message(message.chat.id, "Ищем вакансии по запросу \n" + user.city + ', ' + user.query)
-    db_worker.session_close()
+    #db_worker.session_close()
     work_processor = WorkProcessor(user.city, user.query)
 
     query_result = work_processor.get_offer_list()

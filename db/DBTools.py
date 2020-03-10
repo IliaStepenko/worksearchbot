@@ -19,31 +19,31 @@ class DBWorker:
     def __init__(self):
         self.session = session_factory()
 
-    @staticmethod
-    def get_user_state( chat_id):
-        session = session_factory()
-        user = session.query(User).filter_by(telegram_id=chat_id).first()
-        session.close()
+    def get_user_state(self, chat_id):
+        #session = session_factory()
+        user = self.session.query(User).filter_by(telegram_id=chat_id).first()
+        self.session.close()
         if user is not None:
             return user.state
         else:
             return -1
 
-    @staticmethod
-    def set_user_state(chat_id, state):
-        session = session_factory()
-        session.query(User).filter_by(telegram_id=chat_id).update({User.state: state})
-        session.commit()
-        session.close()
+    def set_user_state(self, chat_id, state):
+        #session = session_factory()
+        self.session.query(User).filter_by(telegram_id=chat_id).update({User.state: state})
+        self.session.commit()
+        self.session.close()
 
     def create_new_user(self, chat_id):
         new_user = User(telegram_id=chat_id, name='',city='', query='', state=State.S_START.value)
         self.session.add(new_user)
         self.session.commit()
+        self.session.close()
         return new_user
 
     def get_user_by_id(self, chat_id):
         user = self.session.query(User).filter_by(telegram_id=chat_id).first()
+        self.session.close()
         return user
 
     def update_user(self, **data):
@@ -57,10 +57,12 @@ class DBWorker:
 
         self.session.query(User).filter_by(telegram_id=new_data['telegram_id']).update(new_data)
         self.session.commit()
+        self.session.close()
 
     def refresh_user(self, chat_id):
         refreshed_user = self.session.query(User).filter_by(telegram_id=chat_id).update({User.city: '', User.name: '', User.query: ''})
         self.session.commit()
+        self.session.close()
         return refreshed_user
 
     def session_close(self):
